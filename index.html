@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Dodge | Juego de Naves</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4e54c8;
+            --secondary-color: #8f94fb;
+            --dark-bg: #0f0c29;
+            --darker-bg: #07051a;
+            --text-color: #ffffff;
+            --danger-color: #ff3860;
+            --success-color: #09c372;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(135deg, var(--dark-bg), var(--darker-bg));
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            max-width: 600px;
+            height: 400px;
+            margin: 0 auto;
+            background-color: #000;
+            border: 4px solid var(--primary-color);
+            border-radius: 8px;
+            box-shadow: 0 0 20px rgba(78, 84, 200, 0.5);
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px var(--secondary-color);
+        }
+
+        .game-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 600px;
+            margin: 10px auto;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        #pauseBtn {
+            background-color: #ffa500;
+        }
+
+        #restartBtn {
+            background-color: var(--danger-color);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            animation: fadeIn 0.5s;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, var(--dark-bg), var(--darker-bg));
+            padding: 30px;
+            border-radius: 10px;
+            border: 4px solid var(--primary-color);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 30px var(--primary-color);
+        }
+
+        .modal h2 {
+            color: var(--secondary-color);
+            margin-bottom: 20px;
+        }
+
+        .modal p {
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .high-scores {
+            margin-top: 20px;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .high-scores th, .high-scores td {
+            padding: 10px;
+            border-bottom: 1px solid var(--primary-color);
+        }
+
+        .high-scores th {
+            color: var(--secondary-color);
+        }
+
+        .instructions {
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: #aaa;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+
+        /* Efectos de partículas */
+        .particle {
+            position: absolute;
+            background-color: var(--secondary-color);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .game-header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .stats-container {
+                font-size: 0.7rem;
+            }
+            
+            button {
+                padding: 10px 15px;
+                font-size: 0.7rem;
+            }
+            
+            #gameCanvas {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <h1>SPACE DODGE</h1>
+    </div>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <div class="stats-container">
+            <div>Puntuación: <span id="score">0</span></div>
+            <div>Nivel: <span id="level">1</span></div>
+            <div>Vidas: <span id="lives">3</span></div>
+        </div>
+        <div class="controls">
+            <button id="startBtn">Iniciar</button>
+            <button id="pauseBtn">Pausa</button>
+            <button id="restartBtn">Reiniciar</button>
+        </div>
+    </div>
+
+    <div class="instructions">
+        <p>CONTROLES: Usa las teclas ← → o desliza en pantalla para mover la nave. Esquiva los meteoritos y recoge power-ups para ganar puntos.</p>
+    </div>
+
+    <!-- Modal de inicio -->
+    <div id="startModal" class="modal">
+        <div class="modal-content">
+            <h2>SPACE DODGE</h2>
+            <p>Pilota tu nave a través de una lluvia de meteoritos. Sobrevive el mayor tiempo posible y alcanza la máxima puntuación.</p>
+            <button id="startGameBtn" class="pulse">¡COMENZAR!</button>
+        </div>
+    </div>
+
+    <!-- Modal de Game Over -->
+    <div id="gameOverModal" class="modal">
+        <div class="modal-content">
+            <h2>GAME OVER</h2>
+            <p>Tu puntuación: <span id="finalScore">0</span></p>
+            <div class="high-scores-container">
+                <h3>MEJORES PUNTUACIONES</h3>
+                <table class="high-scores">
+                    <thead>
+                        <tr>
+                            <th>Posición</th>
+                            <th>Puntuación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="highScoresList">
+                        <!-- Las puntuaciones se cargarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+            <button id="playAgainBtn">JUGAR DE NUEVO</button>
+        </div>
+    </div>
+
+    <script>
+        // Variables del juego
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const livesElement = document.getElementById('lives');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const startModal = document.getElementById('startModal');
+        const gameOverModal = document.getElementById('gameOverModal');
+        const startGameBtn = document.getElementById('startGameBtn');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const finalScoreElement = document.getElementById('finalScore');
+        const highScoresList = document.getElementById('highScoresList');
+
+        // Configuración del juego
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let gameRunning = false;
+        let gamePaused = false;
+        let animationId;
+        let meteorites = [];
+        let powerUps = [];
+        let explosions = [];
+        let particles = [];
+        let lastTime = 0;
+        let gameSpeed = 3;
+        let spawnRate = 1000; // ms entre meteoritos
+        let lastSpawnTime = 0;
+        let lastPowerUpTime = 0;
+        let powerUpSpawnRate = 10000; // ms entre power-ups
+        let keysPressed = {};
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        // Jugador
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            width: 50,
+            height: 50,
+            speed: 8,
+            color: '#4e54c8',
+            isInvincible: false,
+            invincibleTimer: 0
+        };
+
+        // Imágenes (usaremos formas simples pero podrían reemplazarse por sprites)
+        const images = {
+            player: null,
+            meteorite: null,
+            powerUp: null
+        };
+
+        // Sonidos
+        const sounds = {
+            explosion: null,
+            powerUp: null,
+            gameOver: null
+        };
+
+        // Inicializar el juego
+        function init() {
+            // Mostrar modal de inicio
+            startModal.style.display = 'flex';
+            
+            // Configurar eventos
+            setupEventListeners();
+            
+            // Cargar recursos (en un juego real aquí cargaríamos imágenes y sonidos)
+            // loadResources();
+        }
+
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Teclado
+            window.addEventListener('keydown', (e) => {
+                keysPressed[e.key] = true;
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                keysPressed[e.key] = false;
+            });
+            
+            // Pantalla táctil
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                touchStartX = e.touches[0].clientX;
+            }, { passive: false });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                touchEndX = e.touches[0].clientX;
+                handleTouchMove();
+            }, { passive: false });
+            
+            canvas.addEventListener('touchend', () => {
+                touchStartX = 0;
+                touchEndX = 0;
+            });
+            
+            // Botones
+            startBtn.addEventListener('click', startGame);
+            pauseBtn.addEventListener('click', togglePause);
+            restartBtn.addEventListener('click', resetGame);
+            startGameBtn.addEventListener('click', startGame);
+            playAgainBtn.addEventListener('click', resetGame);
+        }
+
+        // Manejar movimiento táctil
+        function handleTouchMove() {
+            if (touchStartX > touchEndX) {
+                // Deslizamiento a la izquierda
+                player.x -= player.speed * 2;
+            } else if (touchStartX < touchEndX) {
+                // Deslizamiento a la derecha
+                player.x += player.speed * 2;
+            }
+            
+            // Asegurar que el jugador no salga del canvas
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+        }
+
+        // Iniciar juego
+        function startGame() {
+            if (gameRunning) return;
+            
+            startModal.style.display = 'none';
+            gameOverModal.style.display = 'none';
+            
+            resetGameState();
+            gameRunning = true;
+            gamePaused = false;
+            
+            lastTime = performance.now();
+            gameLoop(lastTime);
+        }
+
+        // Reiniciar juego
+        function resetGame() {
+            resetGameState();
+            
+            if (!gameRunning) {
+                startGame();
+            } else {
+                gameOverModal.style.display = 'none';
+            }
+        }
+
+        // Reiniciar estado del juego
+        function resetGameState() {
+            score = 0;
+            level = 1;
+            lives = 3;
+            gameSpeed = 3;
+            spawnRate = 1000;
+            
+            meteorites = [];
+            powerUps = [];
+            explosions = [];
+            particles = [];
+            
+            player.x = canvas.width / 2 - 25;
+            player.y = canvas.height - 60;
+            player.isInvincible = false;
+            player.invincibleTimer = 0;
+            
+            updateUI();
+        }
+
+        // Pausar/reanudar juego
+        function togglePause() {
+            if (!gameRunning) return;
+            
+            gamePaused = !gamePaused;
+            
+            if (gamePaused) {
+                cancelAnimationFrame(animationId);
+                pauseBtn.textContent = 'Continuar';
+            } else {
+                lastTime = performance.now();
+                gameLoop(lastTime);
+                pauseBtn.textContent = 'Pausa';
+            }
+        }
+
+        // Bucle principal del juego
+        function gameLoop(timestamp) {
+            if (gamePaused) return;
+            
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            update(deltaTime);
+            render();
+            
+            if (gameRunning) {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Actualizar lógica del juego
+        function update(deltaTime) {
+            // Mover jugador
+            if (keysPressed['ArrowLeft'] || keysPressed['a']) {
+                player.x -= player.speed;
+            }
+            if (keysPressed['ArrowRight'] || keysPressed['d']) {
+                player.x += player.speed;
+            }
+            
+            // Limitar jugador dentro del canvas
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
+            
+            // Generar meteoritos
+            if (timestamp - lastSpawnTime > spawnRate) {
+                spawnMeteorite();
+                lastSpawnTime = timestamp;
+            }
+            
+            // Generar power-ups ocasionalmente
+            if (timestamp - lastPowerUpTime > powerUpSpawnRate) {
+                spawnPowerUp();
+                lastPowerUpTime = timestamp;
+            }
+            
+            // Actualizar meteoritos
+            for (let i = meteorites.length - 1; i >= 0; i--) {
+                meteorites[i].y += meteorites[i].speed;
+                
+                // Eliminar meteoritos que salen de la pantalla
+                if (meteorites[i].y > canvas.height) {
+                    meteorites.splice(i, 1);
+                    continue;
+                }
+                
+                // Detectar colisiones con el jugador
+                if (!player.isInvincible && checkCollision(player, meteorites[i])) {
+                    // Colisión con meteorito
+                    lives--;
+                    createExplosion(meteorites[i].x, meteorites[i].y);
+                    meteorites.splice(i, 1);
+                    
+                    if (lives <= 0) {
+                        gameOver();
+                    } else {
+                        player.isInvincible = true;
+                        player.invincibleTimer = 2000; // 2 segundos de invencibilidad
+                    }
+                    
+                    updateUI();
+                }
+            }
+            
+            // Actualizar power-ups
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                powerUps[i].y += powerUps[i].speed;
+                
+                // Eliminar power-ups que salen de la pantalla
+                if (powerUps[i].y > canvas.height) {
+                    powerUps.splice(i, 1);
+                    continue;
+                }
+                
+                // Detectar colisiones con power-ups
+                if (checkCollision(player, powerUps[i])) {
+                    // Recolectar power-up
+                    applyPowerUp(powerUps[i].type);
+                    createParticles(powerUps[i].x, powerUps[i].y, 10, '#09c372');
+                    powerUps.splice(i, 1);
+                }
+            }
+            
+            // Actualizar explosiones
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].timer -= deltaTime;
+                if (explosions[i].timer <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+            
+            // Actualizar partículas
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].x += particles[i].vx;
+                particles[i].y += particles[i].vy;
+                particles[i].life -= deltaTime;
+                
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            // Actualizar invencibilidad del jugador
+            if (player.isInvincible) {
+                player.invincibleTimer -= deltaTime;
+                if (player.invincibleTimer <= 0) {
+                    player.isInvincible = false;
+                }
+            }
+            
+            // Aumentar dificultad con el tiempo
+            if (score >= level * 1000) {
+                level++;
+                gameSpeed += 0.5;
+                spawnRate = Math.max(300, spawnRate - 100); // Mínimo 300ms entre meteoritos
+                updateUI();
+            }
+        }
+
+        // Renderizar el juego
+        function render() {
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar fondo estrellado
+            drawStarfield();
+            
+            // Dibujar jugador
+            drawPlayer();
+            
+            // Dibujar meteoritos
+            meteorites.forEach(meteorite => {
+                drawMeteorite(meteorite);
+            });
+            
+            // Dibujar power-ups
+            powerUps.forEach(powerUp => {
+                drawPowerUp(powerUp);
+            });
+            
+            // Dibujar explosiones
+            explosions.forEach(explosion => {
+                drawExplosion(explosion);
+            });
+            
+            // Dibujar partículas
+            particles.forEach(particle => {
+                drawParticle(particle);
+            });
+            
+            // Efecto de invencibilidad (parpadeo)
+            if (player.isInvincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                ctx.globalAlpha = 0.5;
+                drawPlayer();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Dibujar fondo estrellado
+        function drawStarfield() {
+            ctx.fillStyle = '#ffffff';
+            
+            // Estrellas fijas (podrían ser aleatorias en una implementación completa)
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 1.5;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Dibujar jugador
+        function drawPlayer() {
+            ctx.fillStyle = player.color;
+            
+            // Forma de nave espacial
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width / 2, player.y);
+            ctx.lineTo(player.x + player.width, player.y + player.height);
+            ctx.lineTo(player.x, player.y + player.height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Motor de la nave
+            ctx.fillStyle = '#ff5555';
+            ctx.beginPath();
+            ctx.moveTo(player.x + player.width / 2 - 5, player.y + player.height);
+            ctx.lineTo(player.x + player.width / 2 + 5, player.y + player.height);
+            ctx.lineTo(player.x + player.width / 2, player.y + player.height + 10);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Dibujar meteorito
+        function drawMeteorite(meteorite) {
+            ctx.fillStyle = meteorite.color;
+            
+            // Forma irregular de meteorito
+            ctx.beginPath();
+            ctx.moveTo(meteorite.x + meteorite.width * 0.5, meteorite.y);
+            ctx.lineTo(meteorite.x + meteorite.width, meteorite.y + meteorite.height * 0.3);
+            ctx.lineTo(meteorite.x + meteorite.width * 0.7, meteorite.y + meteorite.height);
+            ctx.lineTo(meteorite.x + meteorite.width * 0.3, meteorite.y + meteorite.height * 0.8);
+            ctx.lineTo(meteorite.x, meteorite.y + meteorite.height * 0.5);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Dibujar power-up
+        function drawPowerUp(powerUp) {
+            ctx.fillStyle = powerUp.color;
+            
+            // Forma de diamante (podría ser un sprite en una implementación completa)
+            ctx.beginPath();
+            ctx.moveTo(powerUp.x + powerUp.width / 2, powerUp.y);
+            ctx.lineTo(powerUp.x + powerUp.width, powerUp.y + powerUp.height / 2);
+            ctx.lineTo(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height);
+            ctx.lineTo(powerUp.x, powerUp.y + powerUp.height / 2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Efecto brillante
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(powerUp.x + powerUp.width * 0.3, powerUp.y + powerUp.height * 0.2);
+            ctx.lineTo(powerUp.x + powerUp.width * 0.7, powerUp.y + powerUp.height * 0.2);
+            ctx.lineTo(powerUp.x + powerUp.width * 0.5, powerUp.y + powerUp.height * 0.4);
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        // Dibujar explosión
+        function drawExplosion(explosion) {
+            const radius = explosion.radius * (1 - (explosion.maxTime - explosion.timer) / explosion.maxTime);
+            
+            const gradient = ctx.createRadialGradient(
+                explosion.x, explosion.y, 0,
+                explosion.x, explosion.y, radius
+            );
+            gradient.addColorStop(0, explosion.color);
+            gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(explosion.x, explosion.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Dibujar partícula
+        function drawParticle(particle) {
+            ctx.fillStyle = particle.color;
+            ctx.globalAlpha = particle.life / 1000; // Desvanecer
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+        }
+
+        // Generar meteorito
+        function spawnMeteorite() {
+            const size = Math.random() * 30 + 20;
+            const speed = Math.random() * gameSpeed + gameSpeed * 0.5;
+            
+            meteorites.push({
+                x: Math.random() * (canvas.width - size),
+                y: -size,
+                width: size,
+                height: size,
+                speed: speed,
+                color: `hsl(${Math.random() * 30 + 20}, 70%, 50%)` // Tonos rojizos/anaranjados
+            });
+        }
+
+        // Generar power-up
+        function spawnPowerUp() {
+            const types = ['extraLife', 'scoreBoost', 'slowTime'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            let color;
+            
+            switch (type) {
+                case 'extraLife':
+                    color = '#ff5555';
+                    break;
+                case 'scoreBoost':
+                    color = '#55ff55';
+                    break;
+                case 'slowTime':
+                    color = '#5555ff';
+                    break;
+            }
+            
+            powerUps.push({
+                x: Math.random() * (canvas.width - 30),
+                y: -30,
+                width: 30,
+                height: 30,
+                speed: 3,
+                type: type,
+                color: color
+            });
+        }
+
+        // Aplicar efecto de power-up
+        function applyPowerUp(type) {
+            switch (type) {
+                case 'extraLife':
+                    lives++;
+                    score += 200;
+                    break;
+                case 'scoreBoost':
+                    score += 500;
+                    break;
+                case 'slowTime':
+                    // Reducir velocidad de meteoritos temporalmente
+                    meteorites.forEach(meteorite => {
+                        meteorite.speed *= 0.5;
+                    });
+                    setTimeout(() => {
+                        meteorites.forEach(meteorite => {
+                            meteorite.speed *= 2;
+                        });
+                    }, 3000);
+                    break;
+            }
+            
+            updateUI();
+            createParticles(player.x + player.width / 2, player.y, 15, '#ffffff');
+        }
+
+        // Crear explosión
+        function createExplosion(x, y) {
+            explosions.push({
+                x: x,
+                y: y,
+                radius: 50,
+                color: `hsl(${Math.random() * 30 + 20}, 100%, 50%)`,
+                timer: 500,
+                maxTime: 500
+            });
+            
+            // Crear partículas de explosión
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    size: Math.random() * 3 + 2,
+                    color: `hsl(${Math.random() * 30 + 20}, 100%, 50%)`,
+                    vx: Math.random() * 6 - 3,
+                    vy: Math.random() * 6 - 3,
+                    life: Math.random() * 1000 + 500
+                });
+            }
+        }
+
+        // Crear partículas
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    size: Math.random() * 2 + 1,
+                    color: color,
+                    vx: Math.random() * 4 - 2,
+                    vy: Math.random() * 4 - 2,
+                    life: Math.random() * 1000 + 300
+                });
+            }
+        }
+
+        // Detectar colisiones
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+
+        // Actualizar UI
+        function updateUI() {
+            scoreElement.textContent = score;
+            levelElement.textContent = level;
+            livesElement.textContent = lives;
+        }
+
+        // Game Over
+        function gameOver() {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            // Guardar puntuación
+            saveHighScore(score);
+            
+            // Mostrar game over
+            finalScoreElement.textContent = score;
+            displayHighScores();
+            gameOverModal.style.display = 'flex';
+            
+            // Efecto de partículas
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: player.x + player.width / 2,
+                    y: player.y + player.height / 2,
+                    size: Math.random() * 3 + 1,
+                    color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+                    vx: Math.random() * 8 - 4,
+                    vy: Math.random() * 8 - 4,
+                    life: Math.random() * 1500 + 500
+                });
+            }
+        }
+
+        // Guardar puntuación alta
+        function saveHighScore(newScore) {
+            let highScores = JSON.parse(localStorage.getItem('spaceDodgeHighScores')) || [];
+            
+            highScores.push(newScore);
+            highScores.sort((a, b) => b - a);
+            highScores = highScores.slice(0, 5); // Guardar solo las 5 mejores
+            
+            localStorage.setItem('spaceDodgeHighScores', JSON.stringify(highScores));
+        }
+
+        // Mostrar puntuaciones altas
+        function displayHighScores() {
+            const highScores = JSON.parse(localStorage.getItem('spaceDodgeHighScores')) || [];
+            highScoresList.innerHTML = '';
+            
+            highScores.forEach((score, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${score}</td>
+                `;
+                highScoresList.appendChild(row);
+            });
+        }
+
+        // Iniciar el juego cuando se carga la página
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
